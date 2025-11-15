@@ -1,0 +1,5 @@
+# Event Publisher SPI Implementations
+# Feature #45: Event-driven Architecture, #41: Plugin Architecture
+
+com.enterprise.scheduler.plugins.event.DefaultEventPublisher
+com.enterprise.scheduler.plugins.event.KafkaEventPublisher

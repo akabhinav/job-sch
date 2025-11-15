@@ -1,0 +1,56 @@
+# Development Profile Configuration
+spring:
+  # H2 In-Memory Database for Development
+  datasource:
+    url: jdbc:h2:mem:scheduler_dev
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+  flyway:
+    enabled: false
+
+# Development Server Settings
+server:
+  port: 8080
+
+# Logging for Development
+logging:
+  level:
+    root: INFO
+    com.enterprise.scheduler: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+
+# Development Scheduler Settings
+scheduler:
+  execution:
+    thread-pool-size: 5
+    max-concurrent-jobs: 10
+
+# Development Security (Use weak settings for easier testing)
+security:
+  jwt:
+    secret: dev-secret-key-do-not-use-in-production
+    expiration-ms: 86400000  # 24 hours
+
+# Disable clustering in development
+cluster:
+  enabled: false
+
+# Development monitoring
+monitoring:
+  metrics:
+    enabled: true
+  alerting:
+    enabled: false

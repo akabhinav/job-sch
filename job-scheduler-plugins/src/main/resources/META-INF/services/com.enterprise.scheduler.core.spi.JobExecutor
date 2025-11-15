@@ -1,0 +1,7 @@
+# Job Executor SPI Implementations
+# Feature #41: Plugin Architecture, #42: Custom Job Type Support, #50: Custom Executor Support
+
+com.enterprise.scheduler.plugins.executor.ShellJobExecutor
+com.enterprise.scheduler.plugins.executor.HttpJobExecutor
+com.enterprise.scheduler.plugins.executor.JavaJobExecutor
+com.enterprise.scheduler.plugins.executor.ScriptJobExecutor

@@ -1,0 +1,91 @@
+# Security Module Configuration Example
+# This file shows all available security configuration options
+
+scheduler:
+  security:
+    # JWT Configuration
+    jwt:
+      # Secret key for signing JWT tokens (MUST be changed in production)
+      # Should be at least 256 bits (32 characters) for HS256
+      secret: ${JWT_SECRET:yourSecretKeyHereShouldBeAtLeast32CharactersLong1234567890}
+      # Access token expiration time
+      expiration: PT24H  # 24 hours
+      # Refresh token expiration time
+      refresh-expiration: P7D  # 7 days
+      # JWT issuer
+      issuer: job-scheduler-platform
+
+    # API Key Configuration
+    api-key:
+      # Maximum number of API keys per user
+      max-keys-per-user: 10
+      # Maximum number of API keys per tenant
+      max-keys-per-tenant: 100
+      # Default API key expiration (null means no expiration)
+      default-expiration: null
+      # Enable IP address restrictions
+      enable-ip-restrictions: true
+
+    # Audit Configuration
+    audit:
+      # Enable audit logging
+      enabled: true
+      # Audit log retention period
+      retention-period: P90D  # 90 days
+      # Enable async audit logging (recommended for performance)
+      async-logging: true
+      # Log all requests (can be verbose, use with caution)
+      log-all-requests: false
+
+    # CORS Configuration
+    cors:
+      # Allowed origins (use specific origins in production)
+      allowed-origins:
+        - http://localhost:3000
+        - http://localhost:8080
+      # Allowed HTTP methods
+      allowed-methods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+      # Allowed headers
+      allowed-headers:
+        - Authorization
+        - Content-Type
+        - X-Tenant-ID
+        - X-API-Key
+        - X-Request-ID
+      # Allow credentials
+      allow-credentials: true
+      # Preflight request cache time
+      max-age: PT1H  # 1 hour
+
+    # Multi-Tenancy Configuration
+    multi-tenancy:
+      # Enable multi-tenancy support
+      enabled: true
+      # Tenant ID header name
+      tenant-header: X-Tenant-ID
+      # Default tenant ID (for development/testing)
+      default-tenant-id: ${DEFAULT_TENANT_ID:default}
+      # Enforce strict tenant isolation
+      enforce-tenant-isolation: true
+
+# Spring Security Configuration
+spring:
+  security:
+    # OAuth2 configuration (if using OAuth2)
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:}
+          jwk-set-uri: ${JWT_JWK_SET_URI:}
+
+# Logging Configuration
+logging:
+  level:
+    com.enterprise.scheduler.security: DEBUG
+    org.springframework.security: INFO

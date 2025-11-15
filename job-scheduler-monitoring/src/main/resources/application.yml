@@ -1,0 +1,131 @@
+# Job Scheduler Monitoring Configuration
+# Features #21-30: Monitoring & Observability
+
+# Management endpoints configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        # Expose all actuator endpoints
+        include: '*'
+      base-path: /actuator
+      cors:
+        allowed-origins: '*'
+        allowed-methods: GET,POST,PUT,DELETE
+
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+      probes:
+        enabled: true
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+    info:
+      enabled: true
+    env:
+      enabled: true
+      show-values: when-authorized
+    loggers:
+      enabled: true
+    threaddump:
+      enabled: true
+    heapdump:
+      enabled: true
+
+  # Health indicators configuration
+  health:
+    defaults:
+      enabled: true
+    diskspace:
+      enabled: true
+      threshold: 10GB
+    db:
+      enabled: true
+
+  # Metrics configuration
+  metrics:
+    enable:
+      jvm: true
+      process: true
+      system: true
+      logback: true
+      tomcat: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        job.execution.duration: true
+      percentiles:
+        http.server.requests: 0.5, 0.75, 0.95, 0.99
+        job.execution.duration: 0.5, 0.75, 0.95, 0.99
+      slo:
+        http.server.requests: 100ms, 200ms, 500ms, 1s
+        job.execution.duration: 1s, 5s, 10s, 30s
+    tags:
+      application: ${spring.application.name:job-scheduler}
+      environment: ${spring.profiles.active:default}
+    export:
+      prometheus:
+        enabled: true
+        step: 1m
+        descriptions: true
+
+  # Server configuration for management endpoints
+  server:
+    port: 8081  # Separate port for management endpoints
+    ssl:
+      enabled: false
+
+# Scheduler monitoring configuration
+scheduler:
+  monitoring:
+    enabled: true
+
+    # Metrics collection
+    metrics:
+      collection-interval: 30s
+      retention-period: 1h
+
+    # Performance analytics
+    analytics:
+      enabled: true
+      snapshot-interval: 30s
+      max-snapshots: 100
+
+    # Alerting
+    alerting:
+      enabled: true
+      evaluation-interval: 30s
+      cooldown-default: 5m
+
+      # Default alert thresholds
+      thresholds:
+        heap-usage-warning: 85.0
+        heap-usage-critical: 95.0
+        failure-rate-warning: 10.0
+        system-load-warning: 5.0
+        thread-pool-warning: 80.0
+        thread-pool-critical: 95.0
+
+    # Health checks
+    health:
+      enabled: true
+      cluster-min-size: 1
+      database-timeout: 5s
+
+  # Cluster configuration
+  cluster:
+    min-size: 1
+    health-check-interval: 30s
+
+# Logging configuration
+logging:
+  level:
+    com.enterprise.scheduler.monitoring: INFO
+    io.micrometer: INFO
+    org.springframework.boot.actuate: INFO
+  pattern:
+    console: '%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n'
+    file: '%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n'

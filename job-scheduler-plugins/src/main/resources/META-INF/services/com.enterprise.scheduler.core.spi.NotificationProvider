@@ -1,0 +1,7 @@
+# Notification Provider SPI Implementations
+# Feature #29: Alerting System, #41: Plugin Architecture
+
+com.enterprise.scheduler.plugins.notification.EmailNotificationProvider
+com.enterprise.scheduler.plugins.notification.SlackNotificationProvider
+com.enterprise.scheduler.plugins.notification.WebhookNotificationProvider
+com.enterprise.scheduler.plugins.notification.LogNotificationProvider
