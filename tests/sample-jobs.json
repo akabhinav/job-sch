@@ -1,0 +1,191 @@
+[
+  {
+    "name": "daily-backup-job",
+    "type": "shell",
+    "description": "Daily database backup",
+    "priority": "HIGH",
+    "enabled": true,
+    "configuration": {
+      "command": "/scripts/backup-database.sh",
+      "workingDirectory": "/opt/backups"
+    },
+    "schedule": {
+      "type": "CRON",
+      "cronExpression": "0 0 2 * * ?",
+      "timezone": "UTC",
+      "active": true
+    },
+    "retryPolicy": {
+      "maxAttempts": 3,
+      "initialDelayMs": 5000,
+      "strategy": "EXPONENTIAL_BACKOFF"
+    },
+    "timeoutMs": 1800000,
+    "tags": ["backup", "database", "critical"]
+  },
+  {
+    "name": "data-processing-pipeline",
+    "type": "shell",
+    "description": "Process incoming data files",
+    "priority": "NORMAL",
+    "configuration": {
+      "command": "python /opt/scripts/process_data.py --input ${INPUT_DIR} --output ${OUTPUT_DIR}"
+    },
+    "parameters": {
+      "INPUT_DIR": "/data/incoming",
+      "OUTPUT_DIR": "/data/processed"
+    },
+    "schedule": {
+      "type": "INTERVAL",
+      "intervalMs": 300000,
+      "active": true
+    },
+    "tags": ["data", "etl"]
+  },
+  {
+    "name": "health-check-external-api",
+    "type": "http",
+    "description": "Monitor external API health",
+    "configuration": {
+      "url": "https://api.example.com/health",
+      "method": "GET",
+      "timeout": 10000,
+      "headers": {
+        "Authorization": "Bearer ${API_TOKEN}"
+      }
+    },
+    "schedule": {
+      "type": "INTERVAL",
+      "intervalMs": 60000,
+      "active": true
+    },
+    "retryPolicy": {
+      "maxAttempts": 3,
+      "initialDelayMs": 2000,
+      "strategy": "FIXED"
+    },
+    "tags": ["monitoring", "api"]
+  },
+  {
+    "name": "report-generation",
+    "type": "java",
+    "description": "Generate daily analytics report",
+    "priority": "NORMAL",
+    "configuration": {
+      "class": "com.example.reports.DailyReportGenerator",
+      "method": "generate",
+      "arguments": ["daily"]
+    },
+    "schedule": {
+      "type": "CRON",
+      "cronExpression": "0 0 6 * * ?",
+      "timezone": "America/New_York",
+      "active": true
+    },
+    "dependencies": ["daily-backup-job"],
+    "tags": ["reports", "analytics"]
+  },
+  {
+    "name": "cleanup-old-logs",
+    "type": "shell",
+    "description": "Clean up logs older than 30 days",
+    "priority": "LOW",
+    "configuration": {
+      "command": "find /var/log/app -name '*.log' -mtime +30 -delete"
+    },
+    "schedule": {
+      "type": "CRON",
+      "cronExpression": "0 0 3 * * ?",
+      "timezone": "UTC",
+      "active": true
+    },
+    "tags": ["maintenance", "cleanup"]
+  },
+  {
+    "name": "send-notifications",
+    "type": "script",
+    "description": "Send daily notification summary",
+    "configuration": {
+      "scriptType": "python",
+      "script": "import requests\nimport json\n\ndata = {'message': 'Daily summary'}\nrequests.post('https://hooks.slack.com/webhook', json=data)"
+    },
+    "schedule": {
+      "type": "CRON",
+      "cronExpression": "0 0 9 * * ?",
+      "timezone": "UTC",
+      "active": true
+    },
+    "tags": ["notifications"]
+  },
+  {
+    "name": "long-running-batch-job",
+    "type": "shell",
+    "description": "Long-running batch processing",
+    "priority": "NORMAL",
+    "configuration": {
+      "command": "/opt/scripts/batch_process.sh"
+    },
+    "timeoutMs": 7200000,
+    "maxConcurrentExecutions": 1,
+    "retryPolicy": {
+      "maxAttempts": 2,
+      "initialDelayMs": 60000,
+      "strategy": "LINEAR"
+    },
+    "tags": ["batch", "long-running"]
+  },
+  {
+    "name": "api-sync-job",
+    "type": "http",
+    "description": "Sync data with external API",
+    "configuration": {
+      "url": "https://api.example.com/sync",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer ${API_TOKEN}"
+      },
+      "body": "{\"since\": \"${LAST_SYNC}\"}"
+    },
+    "schedule": {
+      "type": "INTERVAL",
+      "intervalMs": 600000,
+      "active": true
+    },
+    "tags": ["sync", "api"]
+  },
+  {
+    "name": "cache-warmup-job",
+    "type": "http",
+    "description": "Warm up application cache",
+    "configuration": {
+      "url": "http://app-server:8080/admin/cache/warmup",
+      "method": "POST",
+      "timeout": 30000
+    },
+    "schedule": {
+      "type": "CRON",
+      "cronExpression": "0 0 4 * * ?",
+      "timezone": "UTC",
+      "active": true
+    },
+    "tags": ["cache", "performance"]
+  },
+  {
+    "name": "security-scan-job",
+    "type": "shell",
+    "description": "Run security vulnerability scan",
+    "priority": "HIGH",
+    "configuration": {
+      "command": "/usr/local/bin/security-scanner --full-scan"
+    },
+    "schedule": {
+      "type": "CRON",
+      "cronExpression": "0 0 1 * * SUN",
+      "timezone": "UTC",
+      "active": true
+    },
+    "timeoutMs": 3600000,
+    "tags": ["security", "compliance"]
+  }
+]

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Scheduler - WebSocket Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        h1 {
+            color: #4ec9b0;
+        }
+        .controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: #252526;
+            border-radius: 5px;
+        }
+        input, button {
+            padding: 8px 12px;
+            margin: 5px;
+            background: #3c3c3c;
+            border: 1px solid #555;
+            color: #d4d4d4;
+            border-radius: 3px;
+        }
+        button {
+            cursor: pointer;
+            background: #0e639c;
+        }
+        button:hover {
+            background: #1177bb;
+        }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .status.connected {
+            background: #4ec9b033;
+            border-left: 4px solid #4ec9b0;
+        }
+        .status.disconnected {
+            background: #ce913533;
+            border-left: 4px solid #ce9135;
+        }
+        .status.error {
+            background: #f4871433;
+            border-left: 4px solid #f48714;
+        }
+        #events {
+            margin-top: 20px;
+            padding: 15px;
+            background: #252526;
+            border-radius: 5px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .event {
+            padding: 10px;
+            margin: 5px 0;
+            background: #3c3c3c;
+            border-radius: 3px;
+            border-left: 3px solid #569cd6;
+        }
+        .event.success {
+            border-left-color: #4ec9b0;
+        }
+        .event.error {
+            border-left-color: #f48714;
+        }
+        .event.info {
+            border-left-color: #569cd6;
+        }
+        .timestamp {
+            color: #858585;
+            font-size: 0.9em;
+        }
+        .clear-btn {
+            background: #666;
+            float: right;
+        }
+        code {
+            background: #1e1e1e;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #ce9178;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔌 Job Scheduler WebSocket Test</h1>
+    <p>Test real-time job event monitoring (Feature #44)</p>
+
+    <div class="controls">
+        <h3>Connection</h3>
+        <input type="text" id="wsUrl" placeholder="WebSocket URL" value="ws://localhost:8080/ws/job-events" style="width: 400px;">
+        <button id="connectBtn" onclick="connect()">Connect</button>
+        <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+        <div id="statusDiv" class="status disconnected">
+            Status: <span id="status">Disconnected</span>
+        </div>
+    </div>
+
+    <div class="controls">
+        <h3>Subscriptions</h3>
+        <input type="text" id="jobId" placeholder="Job ID (optional)">
+        <button onclick="subscribe()">Subscribe to Job</button>
+        <button onclick="unsubscribe()">Unsubscribe</button>
+        <button onclick="ping()">Send Ping</button>
+    </div>
+
+    <div class="controls">
+        <h3>Events <button class="clear-btn" onclick="clearEvents()">Clear</button></h3>
+        <div id="events"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+
+        function connect() {
+            const url = document.getElementById('wsUrl').value;
+
+            try {
+                ws = new WebSocket(url);
+
+                ws.onopen = (event) => {
+                    console.log('WebSocket connected', event);
+                    setStatus('connected', 'Connected');
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('disconnectBtn').disabled = false;
+                    reconnectAttempts = 0;
+                    addEvent('info', 'Connected to Job Scheduler', null);
+                };
+
+                ws.onmessage = (event) => {
+                    console.log('Message received', event.data);
+                    try {
+                        const message = JSON.parse(event.data);
+                        handleMessage(message);
+                    } catch (e) {
+                        addEvent('error', 'Invalid JSON received', event.data);
+                    }
+                };
+
+                ws.onerror = (event) => {
+                    console.error('WebSocket error', event);
+                    setStatus('error', 'Connection Error');
+                    addEvent('error', 'WebSocket error occurred', null);
+                };
+
+                ws.onclose = (event) => {
+                    console.log('WebSocket closed', event);
+                    setStatus('disconnected', 'Disconnected');
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('disconnectBtn').disabled = true;
+                    addEvent('info', `Connection closed (Code: ${event.code})`, null);
+
+                    // Auto-reconnect
+                    if (reconnectAttempts < maxReconnectAttempts && !event.wasClean) {
+                        reconnectAttempts++;
+                        setTimeout(() => {
+                            addEvent('info', `Reconnecting... (Attempt ${reconnectAttempts}/${maxReconnectAttempts})`, null);
+                            connect();
+                        }, 2000 * reconnectAttempts);
+                    }
+                };
+            } catch (e) {
+                setStatus('error', 'Failed to Connect');
+                addEvent('error', 'Failed to create WebSocket', e.message);
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function subscribe() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('Not connected');
+                return;
+            }
+
+            const jobId = document.getElementById('jobId').value;
+            const message = {
+                type: 'SUBSCRIBE',
+                jobId: jobId || undefined
+            };
+
+            ws.send(JSON.stringify(message));
+            addEvent('info', 'Subscription request sent', message);
+        }
+
+        function unsubscribe() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('Not connected');
+                return;
+            }
+
+            const jobId = document.getElementById('jobId').value;
+            const message = {
+                type: 'UNSUBSCRIBE',
+                jobId: jobId || undefined
+            };
+
+            ws.send(JSON.stringify(message));
+            addEvent('info', 'Unsubscribe request sent', message);
+        }
+
+        function ping() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('Not connected');
+                return;
+            }
+
+            ws.send(JSON.stringify({ type: 'PING' }));
+            addEvent('info', 'Ping sent', null);
+        }
+
+        function handleMessage(message) {
+            switch (message.type) {
+                case 'CONNECTED':
+                    addEvent('success', 'Server confirmed connection', message);
+                    break;
+                case 'SUBSCRIBED':
+                    addEvent('success', `Subscribed to job: ${message.jobId || 'ALL'}`, message);
+                    break;
+                case 'UNSUBSCRIBED':
+                    addEvent('info', 'Unsubscribed', message);
+                    break;
+                case 'PONG':
+                    addEvent('info', 'Pong received', message);
+                    break;
+                case 'JOB_EVENT':
+                    handleJobEvent(message.event);
+                    break;
+                case 'ERROR':
+                    addEvent('error', message.message || 'Error received', message);
+                    break;
+                default:
+                    addEvent('info', 'Unknown message type', message);
+            }
+        }
+
+        function handleJobEvent(event) {
+            const eventType = event.type;
+            let eventClass = 'info';
+
+            if (eventType.includes('COMPLETED') || eventType.includes('SUCCESS')) {
+                eventClass = 'success';
+            } else if (eventType.includes('FAILED') || eventType.includes('ERROR') || eventType.includes('TIMEOUT')) {
+                eventClass = 'error';
+            }
+
+            const title = `Job Event: ${eventType}`;
+            addEvent(eventClass, title, event);
+        }
+
+        function setStatus(className, text) {
+            const statusDiv = document.getElementById('statusDiv');
+            statusDiv.className = `status ${className}`;
+            document.getElementById('status').textContent = text;
+        }
+
+        function addEvent(type, message, data) {
+            const eventsDiv = document.getElementById('events');
+            const eventDiv = document.createElement('div');
+            eventDiv.className = `event ${type}`;
+
+            const timestamp = new Date().toLocaleTimeString();
+            let html = `<span class="timestamp">[${timestamp}]</span> <strong>${message}</strong>`;
+
+            if (data) {
+                html += `<br><code>${JSON.stringify(data, null, 2)}</code>`;
+            }
+
+            eventDiv.innerHTML = html;
+            eventsDiv.insertBefore(eventDiv, eventsDiv.firstChild);
+
+            // Limit to 50 events
+            while (eventsDiv.children.length > 50) {
+                eventsDiv.removeChild(eventsDiv.lastChild);
+            }
+        }
+
+        function clearEvents() {
+            document.getElementById('events').innerHTML = '';
+        }
+
+        // Auto-connect on load
+        window.addEventListener('load', () => {
+            // Uncomment to auto-connect
+            // setTimeout(connect, 500);
+        });
+    </script>
+</body>
+</html>
